@@ -1,0 +1,28 @@
+{
+  "name": "nfl-market-mcp-server",
+  "version": "2.0.0",
+  "description": "Keyless MCP server for NFL market prices: Kalshi public market data (game, spread and total ladders, player props, price history), DraftKings game and prop lines via ESPN's public feeds, and NWS stadium weather. Built for the NF Agent.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test:mock": "node test/mock-test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "express": "^4.21.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

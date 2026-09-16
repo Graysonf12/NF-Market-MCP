@@ -1,0 +1,14 @@
+# Render blueprint — optional. You can also create the web service manually
+# in the Render dashboard exactly like the FEMA, Municode and Parcel-GIS connectors.
+# No API keys: every upstream source is public.
+services:
+  - type: web
+    name: nfl-market-mcp
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NWS_USER_AGENT      # optional but polite: "nfl-market-mcp (you@example.com)"
+        sync: false

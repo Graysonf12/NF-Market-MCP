@@ -1,5 +1,6 @@
 /** ESPN public feeds (keyless, undocumented): DraftKings game lines, DK prop lines, injuries. */
-import { ESPN_CORE_BASE, ESPN_SITE_BASE, getJson, mapLimit } from "./http.js";
+import { ESPN_CORE_BASE, ESPN_SITE_BASE, getJson, mapLimit, SourceError } from "./http.js";
+import { nowIso } from "./format.js";
 import { espnAbbr } from "./registry.js";
 import { devigPair, parseAmerican, parseLine } from "./pricing.js";
 
@@ -73,10 +74,26 @@ export function parseScoreboard(data: any): EspnGame[] {
   return out;
 }
 
+/** ESPN rejects date ranges (HTTP 400, checked 2026-09-16), so fetch one day at a time (max 10 days). */
 export async function scoreboard(startDate: string, endDate: string) {
-  const d = (s: string) => s.replace(/-/g, "");
-  const r = await getJson<any>(`${ESPN_SITE_BASE()}/scoreboard`, { dates: startDate === endDate ? d(startDate) : `${d(startDate)}-${d(endDate)}`, limit: "100" });
-  return { games: parseScoreboard(r.data), retrieved_at: r.retrieved_at };
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  const end = Date.parse(`${endDate}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) throw new SourceError("end_date must be a valid date on or after start_date.");
+  const days: string[] = [];
+  for (let t = start; t <= end && days.length < 10; t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10).replace(/-/g, ""));
+  const results = await mapLimit(days, 3, (day) => getJson<any>(`${ESPN_SITE_BASE()}/scoreboard`, { dates: day }));
+  const seen = new Set<string>();
+  const games: EspnGame[] = [];
+  for (const r of results) {
+    for (const g of parseScoreboard(r.data)) {
+      if (seen.has(g.espn_id)) continue;
+      seen.add(g.espn_id);
+      games.push(g);
+    }
+  }
+  games.sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+  const truncated = end - start > 9 * 86_400_000;
+  return { games, retrieved_at: results.length ? results[results.length - 1].retrieved_at : nowIso(), truncated };
 }
 
 export interface PropLine {
@@ -165,7 +182,7 @@ export async function injuries(espnId: string) {
         player: i.athlete?.displayName ?? "?",
         position: i.athlete?.position?.abbreviation ?? null,
         status: i.status ?? i.type?.description ?? null,
-        detail: [i.details?.type, i.details?.detail, i.details?.side].filter(Boolean).join(" ") || null,
+        detail: [i.details?.type, i.details?.detail, i.details?.side].filter((x) => x && x !== "Not Specified").join(" ") || null,
         date: i.date ?? null,
       });
     }

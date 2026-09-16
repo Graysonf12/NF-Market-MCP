@@ -44,8 +44,12 @@ export async function listEvents(series: string, status: "open" | "closed" | "se
 /** One event with markets; tolerant of both response shapes. Returns null when the event does not exist. */
 export async function getEvent(eventTicker: string): Promise<{ event: KEvent; markets: KMarket[]; retrieved_at: string } | null> {
   try {
-    const r = await getJson<{ event: KEvent; markets?: KMarket[] }>(`${KALSHI_BASE()}/events/${encodeURIComponent(eventTicker)}`, { with_nested_markets: "true" });
-    const markets = r.data.markets ?? r.data.event?.markets ?? [];
+    // Live API (checked 2026-09-16): without with_nested_markets the markets are top-level; with it,
+    // they move under event.markets and the top-level array is empty. Accept whichever is non-empty.
+    const r = await getJson<{ event: KEvent; markets?: KMarket[] }>(`${KALSHI_BASE()}/events/${encodeURIComponent(eventTicker)}`);
+    const top = r.data.markets ?? [];
+    const nested = r.data.event?.markets ?? [];
+    const markets = top.length ? top : nested;
     return { event: r.data.event, markets, retrieved_at: r.retrieved_at };
   } catch (e) {
     if (e instanceof SourceError && /HTTP 404/.test(e.message)) return null;

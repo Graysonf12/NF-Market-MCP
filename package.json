@@ -12,7 +12,7 @@
     "test:mock": "node test/mock-test.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
